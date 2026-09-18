@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production build artifacts
+dist/
+**/dist/
+
+# Environment files (contains credentials)
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Go binaries
+app
+app.exe
+*.exe
