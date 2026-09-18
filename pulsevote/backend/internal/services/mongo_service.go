@@ -154,6 +154,20 @@ func (m *MongoService) seedMockData() {
 	}
 	m.memoryPolls[poll3.ID.Hex()] = poll3
 
+	// Upsert seed records directly into MongoDB if connected
+	if m.db != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		usersColl := m.db.Collection("users")
+		pollsColl := m.db.Collection("polls")
+		upsertOpt := options.Update().SetUpsert(true)
+
+		_, _ = usersColl.UpdateOne(ctx, bson.M{"email": defaultUser.Email}, bson.M{"$setOnInsert": defaultUser}, upsertOpt)
+		for _, p := range []models.Poll{poll1, poll2, poll3} {
+			_, _ = pollsColl.UpdateOne(ctx, bson.M{"_id": p.ID}, bson.M{"$setOnInsert": p}, upsertOpt)
+		}
+	}
+
 	// Prime Redis with initial scores
 	redisSvc := InitRedis()
 	ctx := context.Background()
@@ -282,6 +296,13 @@ func (m *MongoService) GetPollByID(ctx context.Context, idStr string) (models.Po
 	var poll models.Poll
 	err = coll.FindOne(ctx, bson.M{"_id": objID}).Decode(&poll)
 	if err != nil {
+		m.mu.RLock()
+		fallbackPoll, exists := m.memoryPolls[idStr]
+		m.mu.RUnlock()
+		if exists {
+			_, _ = coll.InsertOne(ctx, fallbackPoll)
+			return fallbackPoll, nil
+		}
 		return models.Poll{}, fmt.Errorf("poll not found: %w", err)
 	}
 	return poll, nil
@@ -310,6 +331,13 @@ func (m *MongoService) ListRecentPolls(ctx context.Context, limit int64) ([]mode
 	if err := cursor.All(ctx, &polls); err != nil {
 		return nil, err
 	}
+	if len(polls) == 0 {
+		m.mu.RLock()
+		for _, p := range m.memoryPolls {
+			polls = append(polls, p)
+		}
+		m.mu.RUnlock()
+	}
 	return polls, nil
 }
 
@@ -335,6 +363,13 @@ func (m *MongoService) ListUserPolls(ctx context.Context, creatorID primitive.Ob
 	var polls []models.Poll
 	if err := cursor.All(ctx, &polls); err != nil {
 		return nil, err
+	}
+	if len(polls) == 0 {
+		m.mu.RLock()
+		for _, p := range m.memoryPolls {
+			polls = append(polls, p)
+		}
+		m.mu.RUnlock()
 	}
 	return polls, nil
 }

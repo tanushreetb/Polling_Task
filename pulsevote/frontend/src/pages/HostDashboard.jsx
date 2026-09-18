@@ -105,6 +105,14 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
       localPolls = JSON.parse(localStorage.getItem('pulsevote_local_polls') || '[]');
     } catch (e) {}
 
+    const token = localStorage.getItem('pulsevote_token');
+    if (!token || token === 'demo-jwt-token') {
+      if (localPolls.length > 0) {
+        setPolls(prev => [...localPolls, ...prev.filter(p => !localPolls.some(lp => lp.id === p.id))]);
+      }
+      return;
+    }
+
     pollAPI.getUserPolls()
       .then((res) => {
         if (res.data?.metrics) {

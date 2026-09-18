@@ -14,7 +14,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('pulsevote_token');
-    if (token) {
+    if (token && token !== 'demo-jwt-token') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
