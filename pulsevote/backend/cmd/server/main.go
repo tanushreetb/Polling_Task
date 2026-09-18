@@ -43,16 +43,21 @@ func main() {
 	})
 
 	// Public Health Check
-	router.GET("/api/health", func(c *gin.Context) {
+	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":    "healthy",
+			"message":   "PulseVote API is running!",
 			"timestamp": time.Now().UTC(),
 			"services": gin.H{
 				"redis":   "active (ZSET + Pub/Sub)",
 				"mongodb": "active",
 			},
 		})
-	})
+	}
+
+	router.GET("/", healthHandler)
+	router.GET("/health", healthHandler)
+	router.GET("/api/health", healthHandler)
 
 	// REST API Group
 	api := router.Group("/api")
