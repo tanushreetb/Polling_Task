@@ -1,0 +1,513 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for Dynamic Light & Dark Mode */
+:root {
+  --bg-paper: #FAF8F3;
+  --bg-card: #FFFFFF;
+  --bg-card-subtle: #F4EFE6;
+  --text-primary: #1A1D1A;
+  --text-secondary: rgba(26, 29, 26, 0.75);
+  --text-muted: rgba(26, 29, 26, 0.55);
+  --border-color: #E8E2D6;
+  --border-subtle: #D8D1C3;
+  --nav-bg: rgba(250, 248, 243, 0.92);
+}
+
+.dark {
+  --bg-paper: #111713;
+  --bg-card: #18221B;
+  --bg-card-subtle: #202E24;
+  --text-primary: #F8FAF9;
+  --text-secondary: #D4E0D7;
+  --text-muted: #9BB0A1;
+  --border-color: #2C3E30;
+  --border-subtle: #384F3D;
+  --nav-bg: rgba(17, 23, 19, 0.95);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-paper);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+}
+
+/* Base Theme Overrides */
+.bg-paper {
+  background-color: var(--bg-paper) !important;
+}
+
+.bg-white {
+  background-color: var(--bg-card) !important;
+}
+
+.text-charcoal {
+  color: var(--text-primary) !important;
+}
+
+/* Light & Dark High-Contrast Letter Visibility */
+.dark .text-forest-900 {
+  color: #86EFAC !important; /* Sage green / mint: 100% visible on dark mode */
+}
+
+.dark .text-forest-950 {
+  color: #BBF7D0 !important;
+}
+
+.dark .text-forest-800 {
+  color: #A7F3D0 !important;
+}
+
+.dark .text-forest-700 {
+  color: #6EE7B7 !important;
+}
+
+.dark .text-charcoal,
+.dark [class*="text-charcoal"] {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-charcoal\/80, 
+.dark .text-charcoal\/75, 
+.dark .text-charcoal\/70,
+.dark [class*="text-charcoal/8"],
+.dark [class*="text-charcoal/7"] {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-charcoal\/60, 
+.dark .text-charcoal\/50, 
+.dark .text-charcoal\/40,
+.dark [class*="text-charcoal/6"],
+.dark [class*="text-charcoal/5"],
+.dark [class*="text-charcoal/4"] {
+  color: var(--text-muted) !important;
+}
+
+.dark .text-stone-900,
+.dark .text-stone-800,
+.dark .text-stone-700,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700 {
+  color: #F8FAF9 !important;
+}
+
+.dark .text-stone-600,
+.dark .text-stone-500,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #CBD7CE !important;
+}
+
+/* Primary Green Buttons in Dark Mode */
+.dark .bg-forest-900,
+.dark button.bg-forest-900,
+.dark a.bg-forest-900 {
+  background-color: #1F4D33 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .bg-forest-900:hover,
+.dark button.bg-forest-900:hover,
+.dark a.bg-forest-900:hover {
+  background-color: #276241 !important;
+  color: #FFFFFF !important;
+}
+
+.dark .bg-forest-900 *,
+.dark button.bg-forest-900 *,
+.dark a.bg-forest-900 * {
+  color: #FFFFFF !important;
+}
+
+.dark .bg-forest-900\/10 {
+  background-color: rgba(134, 239, 172, 0.15) !important;
+}
+
+.dark .bg-forest-900\/20 {
+  background-color: rgba(134, 239, 172, 0.25) !important;
+}
+
+.dark .bg-forest-900\/5 {
+  background-color: rgba(134, 239, 172, 0.08) !important;
+}
+
+/* Surface backgrounds in dark mode */
+.dark .bg-\[\#F4EFE6\],
+.dark .bg-\[\#F4F9F5\],
+.dark .bg-\[\#FAF8F3\],
+.dark .bg-\[\#F0EAE1\],
+.dark .bg-stone-50,
+.dark .bg-stone-100 {
+  background-color: var(--bg-card-subtle) !important;
+}
+
+.dark .bg-paper\/90 {
+  background-color: var(--nav-bg) !important;
+}
+
+/* Border overrides */
+.border-\[\#EBE5DB\], 
+.border-\[\#E8E3D9\], 
+.border-\[\#EBE6DC\], 
+.border-\[\#E5DFD4\], 
+.border-\[\#F0EBE1\], 
+.border-\[\#EAE5DB\], 
+.border-\[\#D9D3C7\],
+.border-\[\#D6CFC3\],
+.border-\[\#E5E0D4\] {
+  border-color: var(--border-color) !important;
+}
+
+.dark .border-stone-100,
+.dark .border-stone-200,
+.dark .border-stone-300,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+/* Dark Mode Inputs and Interactive Surfaces */
+.dark input, 
+.dark textarea {
+  background-color: var(--bg-card-subtle) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Organic Highlighter Marker Underline */
+.highlight-marker {
+  position: relative;
+  z-index: 1;
+}
+
+.highlight-marker::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: 2px;
+  height: 38%;
+  background-color: #FFE066;
+  opacity: 0.85;
+  z-index: -1;
+  border-radius: 4px;
+  transform: rotate(-0.5deg);
+}
+
+.dark .highlight-marker::after {
+  background-color: #A16207;
+  opacity: 0.65;
+}
+
+/* Sticky Note Shadow and Rotation */
+.sticky-note {
+  box-shadow: 2px 8px 18px -2px rgba(45, 52, 45, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .sticky-note {
+  box-shadow: 2px 8px 20px -2px rgba(0, 0, 0, 0.5);
+}
+
+.sticky-note:hover {
+  transform: translateY(-2px) rotate(0deg) scale(1.02);
+  box-shadow: 4px 12px 24px -2px rgba(45, 52, 45, 0.12);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-paper);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 3D Perspective & Depth Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* 3D Floating Animation Keyframes */
+@keyframes float3d {
+  0% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotateX(4deg) rotateY(-4deg);
+  }
+  100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+}
+
+@keyframes float3dReverse {
+  0% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotateX(-4deg) rotateY(4deg);
+  }
+  100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(27, 77, 62, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(27, 77, 62, 0.35);
+  }
+}
+
+.animate-float-3d {
+  animation: float3d 6s ease-in-out infinite;
+}
+
+.animate-float-3d-slow {
+  animation: float3dReverse 8s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* ThreeUI Shader Frame Container */
+.shader-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 550px;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+}
+
+/* ThreeUI Liquid Metal & Specular Rim Styles */
+.liquid-metal-btn {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 40%, rgba(0, 0, 0, 0.12) 100%), #133522 !important;
+  box-shadow: 0 8px 24px rgba(10, 20, 14, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.4), inset 0 -1px 2px rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #FFFFFF !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-metal-btn:hover {
+  box-shadow: 0 12px 32px rgba(10, 20, 14, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.65), inset 0 -1px 2px rgba(0, 0, 0, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Specular Rim Tracking Effect from ThreeUI SylvaHero */
+[data-spec] {
+  --spec-angle: 0deg;
+  --spec-bright: 0;
+  position: relative;
+}
+
+[data-spec]::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--spec-bright, 0);
+  background: conic-gradient(
+    from var(--spec-angle, 0deg) at 50% 50%,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.1) 15deg,
+    rgba(255, 255, 255, 0.95) 30deg,
+    rgba(255, 255, 255, 0.2) 48deg,
+    transparent 70deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1.5px;
+  transition: opacity 0.2s ease;
+}
+
+/* Living Green Cursor Spotlight Tracking */
+.cursor-glow-light {
+  pointer-events: none;
+  position: fixed;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.08) 0%, rgba(16, 185, 129, 0.035) 45%, transparent 70%);
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  mix-blend-mode: multiply;
+  transition: width 0.3s ease, height 0.3s ease, opacity 0.2s ease;
+  will-change: left, top;
+}
+
+.dark .cursor-glow-light {
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.14) 0%, rgba(16, 185, 129, 0.05) 45%, transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* ── ThreeUI Sylva Floating Glass Dock Navigation (Matching Attached Image) ── */
+.dock-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  isolation: isolate;
+}
+
+.dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+  padding: 5px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 42%),
+    rgba(27, 34, 25, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(10, 15, 9, 0.38), inset 0 1px 1px rgba(255, 255, 255, 0.18);
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dock-item {
+  position: relative;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: 38px;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.dock-item .glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition: opacity 0.18s ease;
+}
+
+.dock-item:hover {
+  z-index: 7;
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(38, 47, 35, 0.96);
+  box-shadow: 0 6px 20px rgba(8, 12, 7, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.dock-item:hover .glyph {
+  opacity: 1;
+}
+
+/* The solid pale paper active tile from the screenshot (like GROVE in the image) */
+.dock-item.is-active {
+  background: #F2F4EC !important;
+  border-color: #F2F4EC !important;
+  color: #1A2117 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(10, 15, 8, 0.28) !important;
+  transform: translateY(-1px);
+}
+
+.dock-item.is-active .glyph {
+  opacity: 0.95;
+  color: #1A2117;
+}
+
+/* Mark tile: solid pale tile on the far left */
+.dock-mark {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: #EEF2E6;
+  border-color: #EEF2E6;
+  color: #1A2117;
+  overflow: hidden;
+}
+
+.dock-mark:hover {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #111710;
+}
+
+.dock-item--enter {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Responsive scaling for mobile & narrow viewports */
+@media (max-width: 640px) {
+  .dock {
+    height: 42px !important;
+    padding: 3px !important;
+    gap: 3px !important;
+    border-radius: 14px !important;
+  }
+  .dock-item {
+    height: 34px !important;
+    padding: 0 9px !important;
+    gap: 4px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.8px !important;
+    border-radius: 9px !important;
+  }
+}
+
+
+
+
+
