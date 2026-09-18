@@ -42,7 +42,7 @@ func InitMongo() *MongoService {
 			uri = "mongodb://localhost:27017"
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		clientOpts := options.Client().ApplyURI(uri)
