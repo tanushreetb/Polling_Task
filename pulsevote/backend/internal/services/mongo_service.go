@@ -76,7 +76,7 @@ func InitMongo() *MongoService {
 // seedMockData seeds sample accounts and polls matching the screenshot
 func (m *MongoService) seedMockData() {
 	hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-	userObjID := primitive.NewObjectID()
+	userObjID, _ := primitive.ObjectIDFromHex("65f1a0b1c2d3e4f5a6b7c8d0")
 	defaultUser := models.User{
 		ID:        userObjID,
 		Email:     "tanushree@pulsevote.com",
@@ -347,7 +347,9 @@ func (m *MongoService) ListUserPolls(ctx context.Context, creatorID primitive.Ob
 		defer m.mu.RUnlock()
 		var list []models.Poll
 		for _, p := range m.memoryPolls {
-			list = append(list, p)
+			if p.CreatorID == creatorID {
+				list = append(list, p)
+			}
 		}
 		return list, nil
 	}
@@ -364,13 +366,7 @@ func (m *MongoService) ListUserPolls(ctx context.Context, creatorID primitive.Ob
 	if err := cursor.All(ctx, &polls); err != nil {
 		return nil, err
 	}
-	if len(polls) == 0 {
-		m.mu.RLock()
-		for _, p := range m.memoryPolls {
-			polls = append(polls, p)
-		}
-		m.mu.RUnlock()
-	}
+	// Return only polls belonging to this creator; new users start with an empty list
 	return polls, nil
 }
 

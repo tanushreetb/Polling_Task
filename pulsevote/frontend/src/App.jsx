@@ -75,18 +75,42 @@ const AppContent = () => {
           />
         )}
 
-        {currentView === 'dashboard' && (
-          <HostDashboard
-            setView={setCurrentView}
-            onSelectPoll={(poll) => {
-              setSelectedPollId(poll.id);
-              setCurrentView('vote');
-            }}
-            onPollResults={(id) => {
-              setSelectedPollId(id);
-              setCurrentView('results');
-            }}
+        {currentView === 'login' && (
+          <Login
+            isFullPage={true}
+            initialMode="login"
+            onSuccess={() => setCurrentView('dashboard')}
           />
+        )}
+
+        {currentView === 'register' && (
+          <Login
+            isFullPage={true}
+            initialMode="register"
+            onSuccess={() => setCurrentView('dashboard')}
+          />
+        )}
+
+        {currentView === 'dashboard' && (
+          isAuthenticated ? (
+            <HostDashboard
+              setView={setCurrentView}
+              onSelectPoll={(poll) => {
+                setSelectedPollId(poll.id);
+                setCurrentView('vote');
+              }}
+              onPollResults={(id) => {
+                setSelectedPollId(id);
+                setCurrentView('results');
+              }}
+            />
+          ) : (
+            <Login
+              isFullPage={true}
+              initialMode="login"
+              onSuccess={() => setCurrentView('dashboard')}
+            />
+          )
         )}
 
         {currentView === 'create' && (
@@ -120,34 +144,23 @@ const AppContent = () => {
 
       {/* Auth Modal (Login / Register) */}
       {authModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="relative w-full max-w-md">
             <button
               onClick={() => setAuthModal(null)}
-              className="absolute -top-3 -right-3 z-30 w-8 h-8 rounded-full bg-white border border-[#D9D3C7] flex items-center justify-center shadow-md hover:bg-stone-100 text-charcoal"
+              className="absolute -top-3 -right-3 z-30 w-8 h-8 rounded-full bg-white dark:bg-[#18231C] border border-[#D9D3C7] dark:border-[#2C3E30] flex items-center justify-center shadow-md hover:bg-stone-100 text-charcoal dark:text-white"
             >
               <X className="w-4 h-4" />
             </button>
 
-            {authModal === 'login' ? (
-              <Login
-                onSwitchToRegister={() => setAuthModal('register')}
-                onClose={() => setAuthModal(null)}
-                onSuccess={() => {
-                  setAuthModal(null);
-                  setCurrentView('dashboard');
-                }}
-              />
-            ) : (
-              <Register
-                onSwitchToLogin={() => setAuthModal('login')}
-                onClose={() => setAuthModal(null)}
-                onSuccess={() => {
-                  setAuthModal(null);
-                  setCurrentView('dashboard');
-                }}
-              />
-            )}
+            <Login
+              initialMode={authModal}
+              onClose={() => setAuthModal(null)}
+              onSuccess={() => {
+                setAuthModal(null);
+                setCurrentView('dashboard');
+              }}
+            />
           </div>
         </div>
       )}

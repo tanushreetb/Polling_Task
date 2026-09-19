@@ -58,12 +58,12 @@ export const Navbar = ({ currentView, setView, onOpenLogin }) => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setView('dashboard')}
-                className="flex items-center gap-2 text-sm font-semibold text-forest-900 px-3 py-1.5 rounded-full hover:bg-forest-900/5 transition-colors"
+                className="flex items-center gap-2 text-sm font-semibold text-forest-900 dark:text-emerald-300 px-3 py-1.5 rounded-full hover:bg-forest-900/5 dark:hover:bg-white/5 transition-colors"
               >
-                <div className="w-7 h-7 rounded-full bg-forest-900 text-white flex items-center justify-center text-xs">
+                <div className="w-7 h-7 rounded-full bg-forest-900 text-white flex items-center justify-center text-xs font-bold shadow-xs">
                   {user?.name ? user.name[0].toUpperCase() : 'T'}
                 </div>
-                <span>{user?.name || 'Dashboard'}</span>
+                <span className="hidden sm:inline">{user?.name || 'Dashboard'}</span>
               </button>
               <Button
                 variant="primary"
@@ -75,14 +75,23 @@ export const Navbar = ({ currentView, setView, onOpenLogin }) => {
               </Button>
             </div>
           ) : (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={onOpenLogin}
-              rightIcon={<span className="text-base">→</span>}
-            >
-              Get Started
-            </Button>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onOpenLogin}
+                className="text-xs sm:text-sm font-bold text-forest-900 dark:text-emerald-300 hover:text-charcoal px-3 py-2 rounded-full hover:bg-forest-900/5 transition-colors"
+              >
+                Log In
+              </button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={onOpenLogin}
+                rightIcon={<span className="text-base">→</span>}
+              >
+                Get Started
+              </Button>
+            </div>
           )}
 
           {/* Dark Mode Moon / Sun Toggle matching screenshot */}

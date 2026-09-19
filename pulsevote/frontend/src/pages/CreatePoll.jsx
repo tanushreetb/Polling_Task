@@ -24,7 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
 
 export const CreatePoll = ({ onPollCreated, onCancel }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isDemoUser } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [options, setOptions] = useState([
@@ -38,10 +38,15 @@ export const CreatePoll = ({ onPollCreated, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Post-creation Share State
   const [createdPoll, setCreatedPoll] = useState(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleAddOption = () => {
+    if (options.length < 8) {
+      setOptions([...options, { text: '' }]);
+    }
+  };
 
   const handleOptionChange = (index, value) => {
     const updated = [...options];
@@ -49,10 +54,10 @@ export const CreatePoll = ({ onPollCreated, onCancel }) => {
     setOptions(updated);
   };
 
-  const handleAddOption = () => {
-    if (options.length < 10) {
-      setOptions([...options, { text: '' }]);
-    }
+  const handleClearOption = (index) => {
+    const updated = [...options];
+    updated[index].text = '';
+    setOptions(updated);
   };
 
   const handleRemoveOption = (index) => {
@@ -63,9 +68,18 @@ export const CreatePoll = ({ onPollCreated, onCancel }) => {
 
   const savePollLocally = (poll) => {
     try {
-      const existing = JSON.parse(localStorage.getItem('pulsevote_local_polls') || '[]');
-      const updated = [poll, ...existing.filter((p) => p.id !== poll.id)];
-      localStorage.setItem('pulsevote_local_polls', JSON.stringify(updated));
+      // 1. Global list for Explore Polls page
+      const globalExisting = JSON.parse(localStorage.getItem('pulsevote_local_polls') || '[]');
+      const globalUpdated = [poll, ...globalExisting.filter((p) => p.id !== poll.id)];
+      localStorage.setItem('pulsevote_local_polls', JSON.stringify(globalUpdated));
+
+      // 2. User-specific list for Host Dashboard
+      if (!isDemoUser && user) {
+        const userStorageKey = `pulsevote_user_polls_${user.id || user.email || 'new_user'}`;
+        const userExisting = JSON.parse(localStorage.getItem(userStorageKey) || '[]');
+        const userUpdated = [poll, ...userExisting.filter((p) => p.id !== poll.id)];
+        localStorage.setItem(userStorageKey, JSON.stringify(userUpdated));
+      }
     } catch (e) {
       console.error('Error saving poll locally:', e);
     }

@@ -13,19 +13,15 @@ export const AuthProvider = ({ children }) => {
         return null;
       }
     }
-    // Default logged-in user "Tanushree" matching the screenshot
-    return {
-      id: "65f1a0b1c2d3e4f5a6b7c8d0",
-      name: "Tanushree",
-      email: "tanushree@pulsevote.com",
-    };
+    // Default to unauthenticated so users can experience the Login page
+    return null;
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem('pulsevote_token') || 'demo-jwt-token');
+  const [token, setToken] = useState(() => localStorage.getItem('pulsevote_token') || null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (token && token !== 'demo-jwt-token') {
+    if (token && !token.startsWith('demo-') && !token.startsWith('local-')) {
       authAPI.getMe()
         .then((res) => {
           if (res.data?.user) {
@@ -34,33 +30,76 @@ export const AuthProvider = ({ children }) => {
           }
         })
         .catch(() => {
-          // Keep current user state
+          // Keep current stored user state
         });
     }
   }, [token]);
 
+  // One-click instant Demo login with mock data pre-configured
+  const loginDemo = () => {
+    const demoUser = {
+      id: "65f1a0b1c2d3e4f5a6b7c8d0",
+      name: "Tanushree",
+      email: "tanushree@pulsevote.com",
+      is_demo: true,
+    };
+    const demoToken = "demo-jwt-token-tanushree";
+    setToken(demoToken);
+    setUser(demoUser);
+    localStorage.setItem('pulsevote_token', demoToken);
+    localStorage.setItem('pulsevote_user', JSON.stringify(demoUser));
+    return { success: true, user: demoUser };
+  };
+
   const login = async (email, password) => {
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Instant demo short-circuit if using the demo account
+    if (cleanEmail === 'tanushree@pulsevote.com' && (!password || password === 'password123')) {
+      try {
+        const res = await authAPI.login({ email: cleanEmail, password: password || 'password123' });
+        const { token: receivedToken, user: receivedUser } = res.data;
+        const userObj = { ...receivedUser, is_demo: true };
+        setToken(receivedToken);
+        setUser(userObj);
+        localStorage.setItem('pulsevote_token', receivedToken);
+        localStorage.setItem('pulsevote_user', JSON.stringify(userObj));
+        return { success: true, user: userObj };
+      } catch (err) {
+        return loginDemo();
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Regular / New user login
     try {
-      const res = await authAPI.login({ email, password });
+      const res = await authAPI.login({ email: cleanEmail, password });
       const { token: receivedToken, user: receivedUser } = res.data;
+      const userObj = { ...receivedUser, is_demo: false };
       setToken(receivedToken);
-      setUser(receivedUser);
+      setUser(userObj);
       localStorage.setItem('pulsevote_token', receivedToken);
-      localStorage.setItem('pulsevote_user', JSON.stringify(receivedUser));
-      return { success: true };
+      localStorage.setItem('pulsevote_user', JSON.stringify(userObj));
+      return { success: true, user: userObj };
     } catch (err) {
-      // If backend is not reached, provide friendly demo login
-      const demoUser = {
-        id: "65f1a0b1c2d3e4f5a6b7c8d0",
-        name: email.split('@')[0] || "Tanushree",
-        email: email,
-      };
-      setToken('demo-jwt-token');
-      setUser(demoUser);
-      localStorage.setItem('pulsevote_token', 'demo-jwt-token');
-      localStorage.setItem('pulsevote_user', JSON.stringify(demoUser));
-      return { success: true };
+      const errMsg = err.response?.data?.error || err.message || 'Invalid email or password';
+      // If offline/server unavailable and not demo user, provide an offline session ONLY if previously registered
+      if (!err.response) {
+        const localAccounts = JSON.parse(localStorage.getItem('pulsevote_accounts') || '[]');
+        const matched = localAccounts.find(a => a.email.toLowerCase() === cleanEmail);
+        if (matched && matched.password === password) {
+          const userObj = { id: matched.id, name: matched.name, email: matched.email, is_demo: false };
+          const localToken = `local-token-${Date.now()}`;
+          setToken(localToken);
+          setUser(userObj);
+          localStorage.setItem('pulsevote_token', localToken);
+          localStorage.setItem('pulsevote_user', JSON.stringify(userObj));
+          return { success: true, user: userObj };
+        }
+      }
+      return { success: false, error: errMsg };
     } finally {
       setLoading(false);
     }
@@ -68,25 +107,45 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password) => {
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+
     try {
-      const res = await authAPI.register({ name, email, password });
+      const res = await authAPI.register({ name: cleanName, email: cleanEmail, password });
       const { token: receivedToken, user: receivedUser } = res.data;
+      const userObj = { ...receivedUser, is_demo: false };
       setToken(receivedToken);
-      setUser(receivedUser);
+      setUser(userObj);
       localStorage.setItem('pulsevote_token', receivedToken);
-      localStorage.setItem('pulsevote_user', JSON.stringify(receivedUser));
-      return { success: true };
+      localStorage.setItem('pulsevote_user', JSON.stringify(userObj));
+      return { success: true, user: userObj };
     } catch (err) {
-      const demoUser = {
-        id: "usr-" + Date.now(),
-        name,
-        email,
+      const errMsg = err.response?.data?.error;
+      if (err.response && err.response.status === 409) {
+        return { success: false, error: errMsg || 'An account with this email already exists' };
+      }
+
+      // Offline fallback: save locally so new user can test seamlessly even without MongoDB
+      const newId = "usr-" + Date.now();
+      const newUser = {
+        id: newId,
+        name: cleanName,
+        email: cleanEmail,
+        is_demo: false,
       };
-      setToken('demo-jwt-token');
-      setUser(demoUser);
-      localStorage.setItem('pulsevote_token', 'demo-jwt-token');
-      localStorage.setItem('pulsevote_user', JSON.stringify(demoUser));
-      return { success: true };
+
+      try {
+        const localAccounts = JSON.parse(localStorage.getItem('pulsevote_accounts') || '[]');
+        localAccounts.push({ id: newId, name: cleanName, email: cleanEmail, password });
+        localStorage.setItem('pulsevote_accounts', JSON.stringify(localAccounts));
+      } catch (e) {}
+
+      const localToken = `local-token-${Date.now()}`;
+      setToken(localToken);
+      setUser(newUser);
+      localStorage.setItem('pulsevote_token', localToken);
+      localStorage.setItem('pulsevote_user', JSON.stringify(newUser));
+      return { success: true, user: newUser };
     } finally {
       setLoading(false);
     }
@@ -99,8 +158,22 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('pulsevote_user');
   };
 
+  const isDemoUser = user?.email?.toLowerCase() === 'tanushree@pulsevote.com' || user?.is_demo === true;
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading, isAuthenticated: !!user }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        loginDemo,
+        register,
+        logout,
+        loading,
+        isAuthenticated: !!user,
+        isDemoUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -35,7 +35,7 @@ import { Button } from '../components/Button';
 import { SharePollModal } from '../components/SharePollModal';
 
 export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, isDemoUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'my-polls' | 'analytics' | 'profile' | 'settings'
   const [toastMessage, setToastMessage] = useState('');
   const [activeSharePoll, setActiveSharePoll] = useState(null);
@@ -54,10 +54,14 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
   };
 
   // Profile Form State
-  const [profileName, setProfileName] = useState(user?.name || 'Tanushree');
-  const [profileEmail, setProfileEmail] = useState(user?.email || 'tanushree@pulsevote.com');
-  const [profileBio, setProfileBio] = useState('Full-stack engineer passionate about real-time interactive experiences.');
-  const [profileRole, setProfileRole] = useState('Lead Poll Host & Creator');
+  const [profileName, setProfileName] = useState(user?.name || (isDemoUser ? 'Tanushree' : 'Host'));
+  const [profileEmail, setProfileEmail] = useState(user?.email || (isDemoUser ? 'tanushree@pulsevote.com' : 'user@example.com'));
+  const [profileBio, setProfileBio] = useState(
+    isDemoUser
+      ? 'Full-stack engineer passionate about real-time interactive experiences.'
+      : 'Real-time poll creator on PulseVote.'
+  );
+  const [profileRole, setProfileRole] = useState(isDemoUser ? 'Lead Poll Host & Creator' : 'Poll Host');
 
   // Settings State
   const [wsAutoReconnect, setWsAutoReconnect] = useState(true);
@@ -65,14 +69,14 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [durabilitySyncInterval, setDurabilitySyncInterval] = useState('10 seconds');
 
-  const [metrics, setMetrics] = useState({
+  const DEMO_METRICS = {
     total_polls: 12,
     active_polls: 8,
     total_votes: 1800,
     unique_voters: 256,
-  });
+  };
 
-  const [polls, setPolls] = useState([
+  const DEMO_POLLS = [
     {
       id: "65f1a0b1c2d3e4f5a6b7c8d1",
       title: "Which programming language do you love the most?",
@@ -97,43 +101,88 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
       is_active: false,
       thumbnail: "📚",
     },
-  ]);
+  ];
+
+  const [metrics, setMetrics] = useState(() => {
+    if (isDemoUser) return DEMO_METRICS;
+    return {
+      total_polls: 0,
+      active_polls: 0,
+      total_votes: 0,
+      unique_voters: 0,
+    };
+  });
+
+  const [polls, setPolls] = useState(() => {
+    if (isDemoUser) return DEMO_POLLS;
+    return [];
+  });
 
   useEffect(() => {
+    const userStorageKey = isDemoUser
+      ? 'pulsevote_local_polls'
+      : `pulsevote_user_polls_${user?.id || user?.email || 'new_user'}`;
+
     let localPolls = [];
     try {
-      localPolls = JSON.parse(localStorage.getItem('pulsevote_local_polls') || '[]');
+      localPolls = JSON.parse(localStorage.getItem(userStorageKey) || '[]');
     } catch (e) {}
 
-    const token = localStorage.getItem('pulsevote_token');
-    if (!token || token === 'demo-jwt-token') {
-      if (localPolls.length > 0) {
-        setPolls(prev => [...localPolls, ...prev.filter(p => !localPolls.some(lp => lp.id === p.id))]);
-      }
+    // 1. DEMO USER: Always has pre-seeded mock polls + metrics
+    if (isDemoUser) {
+      const combined = [...localPolls, ...DEMO_POLLS.filter(p => !localPolls.some(lp => lp.id === p.id))];
+      setPolls(combined);
+      setMetrics({
+        ...DEMO_METRICS,
+        total_polls: DEMO_METRICS.total_polls + localPolls.length,
+      });
       return;
     }
 
+    // 2. NEW USER: Clean slate without mock data!
+    const token = localStorage.getItem('pulsevote_token');
+    if (!token || token.startsWith('local-')) {
+      // Local/offline session for new user
+      setPolls(localPolls);
+      const activeCount = localPolls.filter(p => p.is_active !== false).length;
+      const totalVotes = localPolls.reduce((acc, p) => acc + (p.total_votes || 0), 0);
+      setMetrics({
+        total_polls: localPolls.length,
+        active_polls: activeCount,
+        total_votes: totalVotes,
+        unique_voters: Math.round(totalVotes * 0.72),
+      });
+      return;
+    }
+
+    // Authenticated API session for new user
     pollAPI.getUserPolls()
       .then((res) => {
-        if (res.data?.metrics) {
-          setMetrics(prev => ({
-            ...res.data.metrics,
-            total_polls: res.data.metrics.total_polls + localPolls.length,
-          }));
-        }
-        if (res.data?.polls && res.data.polls.length > 0) {
-          const combined = [...localPolls, ...res.data.polls.filter(p => !localPolls.some(lp => lp.id === p.id))];
-          setPolls(combined);
-        } else if (localPolls.length > 0) {
-          setPolls(prev => [...localPolls, ...prev.filter(p => !localPolls.some(lp => lp.id === p.id))]);
-        }
+        const serverPolls = res.data?.polls || [];
+        const combined = [...localPolls, ...serverPolls.filter(p => !localPolls.some(lp => lp.id === p.id))];
+        setPolls(combined);
+
+        const activeCount = combined.filter(p => p.is_active !== false).length;
+        const totalVotes = combined.reduce((acc, p) => acc + (p.total_votes || 0), 0);
+        setMetrics({
+          total_polls: combined.length,
+          active_polls: activeCount,
+          total_votes: totalVotes,
+          unique_voters: Math.round(totalVotes * 0.72),
+        });
       })
       .catch(() => {
-        if (localPolls.length > 0) {
-          setPolls(prev => [...localPolls, ...prev.filter(p => !localPolls.some(lp => lp.id === p.id))]);
-        }
+        setPolls(localPolls);
+        const activeCount = localPolls.filter(p => p.is_active !== false).length;
+        const totalVotes = localPolls.reduce((acc, p) => acc + (p.total_votes || 0), 0);
+        setMetrics({
+          total_polls: localPolls.length,
+          active_polls: activeCount,
+          total_votes: totalVotes,
+          unique_voters: Math.round(totalVotes * 0.72),
+        });
       });
-  }, []);
+  }, [user, isDemoUser]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -425,88 +474,124 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  {polls.map((poll) => {
-                    const isActive = poll.is_active !== false;
-                    return (
-                      <motion.div
-                        key={poll.id}
-                        whileHover={{ y: -1 }}
-                        className="bg-white dark:bg-[#18221B] rounded-2xl p-4 border border-[#EBE5DB] dark:border-[#2C3E30] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-card hover:border-forest-900/30 transition-all cursor-pointer group"
+                {polls.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white dark:bg-[#18221B] rounded-3xl p-8 sm:p-12 border border-[#EBE5DB] dark:border-[#2C3E30] text-center max-w-xl mx-auto shadow-xs my-4"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-forest-900/10 dark:bg-emerald-950/50 text-forest-900 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-forest-900/10">
+                      <LeafSprig className="w-8 h-8 rotate-12" />
+                    </div>
+                    <h3 className="text-xl font-extrabold text-charcoal mb-2">
+                      No Polls Created Yet
+                    </h3>
+                    <p className="text-sm text-charcoal/60 dark:text-stone-300 mb-6 max-w-md mx-auto leading-relaxed">
+                      Welcome to your fresh host workspace! Launch your first real-time question with instant WebSocket sync and QR code voting.
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => setView('create')}
+                        leftIcon={<Plus className="w-4 h-4" />}
                       >
-                        <div
-                          onClick={() => onSelectPoll && onSelectPoll(poll)}
-                          className="flex items-center gap-3.5 min-w-0 flex-1"
+                        Create Your First Poll
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        onClick={() => setView('explore')}
+                        leftIcon={<Eye className="w-4 h-4" />}
+                      >
+                        Explore Public Polls
+                      </Button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-3">
+                    {polls.map((poll) => {
+                      const isActive = poll.is_active !== false;
+                      return (
+                        <motion.div
+                          key={poll.id}
+                          whileHover={{ y: -1 }}
+                          className="bg-white dark:bg-[#18221B] rounded-2xl p-4 border border-[#EBE5DB] dark:border-[#2C3E30] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-card hover:border-forest-900/30 transition-all cursor-pointer group"
                         >
-                          <div className="w-12 h-12 rounded-xl bg-[#F4EFE6] dark:bg-white/5 border border-[#E8E1D5] dark:border-white/10 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
-                            {poll.thumbnail || '📊'}
-                          </div>
-                          <div className="min-w-0">
-                            <h4
-                              className="font-bold text-sm sm:text-base text-charcoal truncate group-hover:text-forest-900 transition-colors"
-                            >
-                              {poll.title}
-                            </h4>
-                            <div className="flex items-center gap-2 text-xs text-charcoal/60 mt-1">
-                              <span>{poll.total_votes || 0} votes</span>
-                              <span>•</span>
-                              <span>{poll.created_at_text || 'Created recently'}</span>
+                          <div
+                            onClick={() => onSelectPoll && onSelectPoll(poll)}
+                            className="flex items-center gap-3.5 min-w-0 flex-1"
+                          >
+                            <div className="w-12 h-12 rounded-xl bg-[#F4EFE6] dark:bg-white/5 border border-[#E8E1D5] dark:border-white/10 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
+                              {poll.thumbnail || '📊'}
+                            </div>
+                            <div className="min-w-0">
+                              <h4
+                                className="font-bold text-sm sm:text-base text-charcoal truncate group-hover:text-forest-900 transition-colors"
+                              >
+                                {poll.title}
+                              </h4>
+                              <div className="flex items-center gap-2 text-xs text-charcoal/60 mt-1">
+                                <span>{poll.total_votes || 0} votes</span>
+                                <span>•</span>
+                                <span>{poll.created_at_text || 'Created recently'}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                              isActive
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40'
-                                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40'
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                            <span>{isActive ? 'Active' : 'Closed'}</span>
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                                isActive
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40'
+                                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40'
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                              <span>{isActive ? 'Active' : 'Closed'}</span>
+                            </span>
 
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectPoll && onSelectPoll(poll);
-                            }}
-                            rightIcon={<span>→</span>}
-                          >
-                            Vote
-                          </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectPoll && onSelectPoll(poll);
+                              }}
+                              rightIcon={<span>→</span>}
+                            >
+                              Vote
+                            </Button>
 
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onPollResults && onPollResults(poll.id);
-                            }}
-                          >
-                            Results
-                          </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPollResults && onPollResults(poll.id);
+                              }}
+                            >
+                              Results
+                            </Button>
 
-                          {/* Share & QR Code Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveSharePoll(poll);
-                            }}
-                            className="p-2 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] text-charcoal/70 hover:text-forest-900 hover:bg-forest-900/5 transition-colors"
-                            title="Share link & QR code"
-                            aria-label="Share link & QR code"
-                          >
-                            <Share2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                            {/* Share & QR Code Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveSharePoll(poll);
+                              }}
+                              className="p-2 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] text-charcoal/70 hover:text-forest-900 hover:bg-forest-900/5 transition-colors"
+                              title="Share link & QR code"
+                              aria-label="Share link & QR code"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Bottom Handwritten Quote Strip */}
@@ -712,60 +797,82 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
                 </Button>
               </div>
 
-              <div className="space-y-3">
-                {polls.map((poll) => (
-                  <motion.div
-                    key={poll.id}
-                    whileHover={{ y: -1 }}
-                    className="p-4 rounded-2xl border border-[#EBE5DB] dark:border-[#2C3E30] hover:border-forest-900/40 dark:hover:border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all cursor-pointer group hover:shadow-card bg-white dark:bg-[#18221B]"
+              {polls.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-8 sm:p-12 text-center max-w-lg mx-auto"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-forest-900/10 dark:bg-emerald-950/50 text-forest-900 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 border border-forest-900/10">
+                    <LeafSprig className="w-7 h-7 rotate-12" />
+                  </div>
+                  <h4 className="font-extrabold text-lg text-charcoal mb-1">Your poll list is empty</h4>
+                  <p className="text-xs text-charcoal/60 mb-5">Create a poll now to see it listed here with full response data.</p>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setView('create')}
+                    leftIcon={<Plus className="w-3.5 h-3.5" />}
                   >
-                    <div
-                      onClick={() => onSelectPoll && onSelectPoll(poll)}
-                      className="flex items-center gap-3.5 min-w-0 flex-1"
+                    Create a Poll
+                  </Button>
+                </motion.div>
+              ) : (
+                <div className="space-y-3">
+                  {polls.map((poll) => (
+                    <motion.div
+                      key={poll.id}
+                      whileHover={{ y: -1 }}
+                      className="p-4 rounded-2xl border border-[#EBE5DB] dark:border-[#2C3E30] hover:border-forest-900/40 dark:hover:border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all cursor-pointer group hover:shadow-card bg-white dark:bg-[#18221B]"
                     >
-                      <span className="text-2xl shrink-0 group-hover:scale-105 transition-transform">{poll.thumbnail || '📊'}</span>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-base text-charcoal group-hover:text-forest-900 transition-colors truncate">{poll.title}</h4>
-                        <p className="text-xs text-charcoal/60 mt-0.5">{poll.total_votes || 0} votes recorded</p>
+                      <div
+                        onClick={() => onSelectPoll && onSelectPoll(poll)}
+                        className="flex items-center gap-3.5 min-w-0 flex-1"
+                      >
+                        <span className="text-2xl shrink-0 group-hover:scale-105 transition-transform">{poll.thumbnail || '📊'}</span>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-base text-charcoal group-hover:text-forest-900 transition-colors truncate">{poll.title}</h4>
+                          <p className="text-xs text-charcoal/60 mt-0.5">{poll.total_votes || 0} votes recorded</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectPoll && onSelectPoll(poll);
-                        }}
-                        rightIcon={<span>→</span>}
-                      >
-                        Vote
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onPollResults && onPollResults(poll.id);
-                        }}
-                      >
-                        Results
-                      </Button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveSharePoll(poll);
-                        }}
-                        className="p-2 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] text-charcoal/70 hover:text-forest-900 hover:bg-forest-900/5 transition-colors"
-                        title="Share link & QR code"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectPoll && onSelectPoll(poll);
+                          }}
+                          rightIcon={<span>→</span>}
+                        >
+                          Vote
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPollResults && onPollResults(poll.id);
+                          }}
+                        >
+                          Results
+                        </Button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveSharePoll(poll);
+                          }}
+                          className="p-2 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] text-charcoal/70 hover:text-forest-900 hover:bg-forest-900/5 transition-colors"
+                          title="Share link & QR code"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

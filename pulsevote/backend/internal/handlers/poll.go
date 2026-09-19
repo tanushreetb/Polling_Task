@@ -190,8 +190,9 @@ func (h *PollHandler) GetUserPolls(c *gin.Context) {
 		UniqueVoters: int64(float64(totalVotes) * 0.72), // Realistic unique voter estimation
 	}
 
-	// If freshly signed up with zero polls, provide default dashboard metrics to show the UI
-	if len(polls) == 0 {
+	// Only provide showcase metrics for the pre-seeded demo user
+	demoID, _ := primitive.ObjectIDFromHex("65f1a0b1c2d3e4f5a6b7c8d0")
+	if creatorID == demoID && len(polls) == 0 {
 		metrics = models.HostMetrics{
 			TotalPolls:   12,
 			ActivePolls:  8,
