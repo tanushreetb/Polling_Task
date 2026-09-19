@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  X
+  X,
+  Check
 } from 'lucide-react';
 import { PulseWaveIcon, LeafSprig } from '../components/BotanicalAccents';
 import { StickyNote } from '../components/StickyNote';
@@ -33,20 +34,72 @@ export const Login = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('tanushree@pulsevote.com');
   const [password, setPassword] = useState('password123');
+  const [confirmPassword, setConfirmPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
+  const [touched, setTouched] = useState({
+    name: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+  });
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotError, setForgotError] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+
+  // Email format validation (RFC-compliant standard pattern)
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const isEmailValid = emailRegex.test(email.trim());
+
+  const getEmailError = (val = email) => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Email address is required';
+    if (!emailRegex.test(trimmed)) return 'Please enter a valid email address (e.g. name@domain.com)';
+    return '';
+  };
+
+  // Password criteria for registration & security
+  const passwordCriteria = {
+    minLength: password.length >= 6,
+    hasLetter: /[a-zA-Z]/.test(password),
+    hasNumber: /\d/.test(password),
+  };
+  const isPasswordValid = passwordCriteria.minLength && passwordCriteria.hasLetter && passwordCriteria.hasNumber;
+
+  const getPasswordError = () => {
+    if (!password) return 'Password is required';
+    if (mode === 'register') {
+      if (!passwordCriteria.minLength) return 'Password must be at least 6 characters long';
+      if (!passwordCriteria.hasLetter) return 'Password must include at least one letter (a-z, A-Z)';
+      if (!passwordCriteria.hasNumber) return 'Password must include at least one number (0-9)';
+    }
+    return '';
+  };
+
+  const isConfirmPasswordValid = confirmPassword === password && confirmPassword.length > 0;
+  const getConfirmPasswordError = () => {
+    if (mode !== 'register') return '';
+    if (!confirmPassword) return 'Please confirm your password';
+    if (confirmPassword !== password) return 'Passwords do not match';
+    return '';
+  };
 
   // Compute password strength for registration
   const getPasswordStrength = () => {
     if (!password) return { score: 0, text: '', color: 'bg-stone-200' };
     if (password.length < 6) return { score: 1, text: 'Too short', color: 'bg-rose-500' };
     const hasNum = /\d/.test(password);
-    const hasSpecial = /[^A-Za-z0-9]/.test(password);
-    if (password.length >= 8 && hasNum && hasSpecial) return { score: 3, text: 'Strong', color: 'bg-emerald-500' };
-    if (password.length >= 6) return { score: 2, text: 'Medium', color: 'bg-amber-500' };
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasSpecialOrUpper = /[^A-Za-z0-9]/.test(password) || /[A-Z]/.test(password);
+    if (password.length >= 8 && hasNum && hasLetter && hasSpecialOrUpper) {
+      return { score: 3, text: 'Strong', color: 'bg-emerald-500' };
+    }
+    if (password.length >= 6 && hasNum && hasLetter) {
+      return { score: 2, text: 'Medium', color: 'bg-amber-500' };
+    }
     return { score: 1, text: 'Weak', color: 'bg-rose-500' };
   };
   const strength = getPasswordStrength();
@@ -66,6 +119,8 @@ export const Login = ({
     setMode('login');
     setEmail('tanushree@pulsevote.com');
     setPassword('password123');
+    setConfirmPassword('password123');
+    setTouched({ name: false, email: false, password: false, confirmPassword: false });
     setError('');
   };
 
@@ -75,14 +130,27 @@ export const Login = ({
     setName('');
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
+    setTouched({ name: false, email: false, password: false, confirmPassword: false });
     setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ name: true, email: true, password: true, confirmPassword: true });
     setError('');
 
+    const emailErr = getEmailError();
+    if (emailErr) {
+      setError(emailErr);
+      return;
+    }
+
     if (mode === 'login') {
+      if (!password) {
+        setError('Password is required');
+        return;
+      }
       const res = await login(email, password);
       if (res.success) {
         if (onSuccess) onSuccess();
@@ -95,8 +163,14 @@ export const Login = ({
         setError('Please provide your full name');
         return;
       }
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters long');
+      const pwdErr = getPasswordError();
+      if (pwdErr) {
+        setError(pwdErr);
+        return;
+      }
+      const confirmErr = getConfirmPasswordError();
+      if (confirmErr) {
+        setError(confirmErr);
         return;
       }
       const res = await register(name, email, password);
@@ -298,11 +372,22 @@ export const Login = ({
                     type="text"
                     required={mode === 'register'}
                     value={name}
+                    onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Alex Morgan"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900 outline-none text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40"
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40 outline-none ${
+                      touched.name && !name.trim() && mode === 'register'
+                        ? 'border-rose-400 dark:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                        : 'border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900'
+                    }`}
                   />
                 </div>
+                {touched.name && !name.trim() && mode === 'register' && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    Please provide your full name
+                  </p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -331,11 +416,33 @@ export const Login = ({
                 type="email"
                 required
                 value={email}
+                onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900 outline-none text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40"
+                className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40 outline-none ${
+                  touched.email && getEmailError()
+                    ? 'border-rose-400 dark:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                    : touched.email && isEmailValid
+                    ? 'border-emerald-500/60 dark:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500'
+                    : 'border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900'
+                }`}
               />
+              {touched.email && email.trim() && (
+                <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
+                  {isEmailValid ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-500" />
+                  )}
+                </div>
+              )}
             </div>
+            {touched.email && getEmailError() && (
+              <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {getEmailError()}
+              </p>
+            )}
           </div>
 
           {/* Password field */}
@@ -352,9 +459,14 @@ export const Login = ({
                 required
                 minLength={6}
                 value={password}
+                onBlur={() => setTouched((t) => ({ ...t, password: true }))}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === 'login' ? 'Enter password' : 'At least 6 characters'}
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900 outline-none text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40"
+                className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40 outline-none ${
+                  touched.password && getPasswordError()
+                    ? 'border-rose-400 dark:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                    : 'border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900'
+                }`}
               />
               <button
                 type="button"
@@ -366,21 +478,103 @@ export const Login = ({
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {touched.password && getPasswordError() && (
+              <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {getPasswordError()}
+              </p>
+            )}
 
-            {/* Password Strength Indicator for Registration */}
-            {mode === 'register' && password.length > 0 && (
-              <div className="mt-1.5 flex items-center gap-2">
-                <div className="flex-1 h-1 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden flex gap-1">
+            {/* Password Strength & Criteria Checklist for Registration */}
+            {mode === 'register' && (
+              <div className="mt-2 space-y-2 p-2.5 bg-[#FAF7F2] dark:bg-[#131B15] rounded-xl border border-[#EAE4D8] dark:border-[#253629]">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-charcoal/70 dark:text-stone-300">Password Strength</span>
+                  <span className={`font-bold ${strength.score >= 3 ? 'text-emerald-600 dark:text-emerald-400' : strength.score === 2 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {strength.text || 'Too short'}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden flex gap-1">
                   <div className={`h-full flex-1 rounded-full ${strength.score >= 1 ? strength.color : 'bg-transparent'}`} />
                   <div className={`h-full flex-1 rounded-full ${strength.score >= 2 ? strength.color : 'bg-transparent'}`} />
                   <div className={`h-full flex-1 rounded-full ${strength.score >= 3 ? strength.color : 'bg-transparent'}`} />
                 </div>
-                <span className="text-[10px] font-bold text-charcoal/60 dark:text-stone-400">
-                  {strength.text}
-                </span>
+                {/* Criteria Checklist */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1 text-[10px]">
+                  <div className={`flex items-center gap-1 font-medium ${passwordCriteria.minLength ? 'text-emerald-600 dark:text-emerald-400' : 'text-charcoal/50 dark:text-stone-500'}`}>
+                    {passwordCriteria.minLength ? <Check className="w-3 h-3 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-600 shrink-0" />}
+                    <span>6+ chars</span>
+                  </div>
+                  <div className={`flex items-center gap-1 font-medium ${passwordCriteria.hasLetter ? 'text-emerald-600 dark:text-emerald-400' : 'text-charcoal/50 dark:text-stone-500'}`}>
+                    {passwordCriteria.hasLetter ? <Check className="w-3 h-3 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-600 shrink-0" />}
+                    <span>Letters</span>
+                  </div>
+                  <div className={`flex items-center gap-1 font-medium ${passwordCriteria.hasNumber ? 'text-emerald-600 dark:text-emerald-400' : 'text-charcoal/50 dark:text-stone-500'}`}>
+                    {passwordCriteria.hasNumber ? <Check className="w-3 h-3 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-stone-600 shrink-0" />}
+                    <span>Numbers</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Confirm Password field (Register only) */}
+          <AnimatePresence>
+            {mode === 'register' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <label className="block text-xs font-semibold text-charcoal/80 dark:text-stone-300 mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-charcoal/40 dark:text-stone-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required={mode === 'register'}
+                    value={confirmPassword}
+                    onBlur={() => setTouched((t) => ({ ...t, confirmPassword: true }))}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm text-charcoal dark:text-white bg-white dark:bg-[#141C16] transition-all placeholder:text-charcoal/40 outline-none ${
+                      touched.confirmPassword && getConfirmPasswordError()
+                        ? 'border-rose-400 dark:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                        : touched.confirmPassword && isConfirmPasswordValid
+                        ? 'border-emerald-500/60 dark:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500'
+                        : 'border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500 focus:ring-1 focus:ring-forest-900'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-charcoal/40 hover:text-charcoal dark:hover:text-white transition-colors"
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {touched.confirmPassword && getConfirmPasswordError() && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {getConfirmPasswordError()}
+                  </p>
+                )}
+                {touched.confirmPassword && isConfirmPasswordValid && (
+                  <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                    Passwords match
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Remember me & Forgot Password */}
           {mode === 'login' && (
@@ -396,7 +590,11 @@ export const Login = ({
               </label>
               <button
                 type="button"
-                onClick={() => setShowForgotModal(true)}
+                onClick={() => {
+                  setForgotEmail(email || '');
+                  setForgotError('');
+                  setShowForgotModal(true);
+                }}
                 className="text-charcoal/60 dark:text-stone-400 hover:text-forest-900 dark:hover:text-emerald-400 font-medium"
               >
                 Forgot password?
@@ -496,7 +694,7 @@ export const Login = ({
             >
               <button
                 type="button"
-                onClick={() => { setShowForgotModal(false); setForgotSent(false); }}
+                onClick={() => { setShowForgotModal(false); setForgotSent(false); setForgotError(''); }}
                 className="absolute top-4 right-4 text-charcoal/50 hover:text-charcoal dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
@@ -513,7 +711,7 @@ export const Login = ({
               {forgotSent ? (
                 <div className="text-xs text-charcoal/70 dark:text-stone-300 space-y-3 py-2">
                   <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-700 dark:text-emerald-300 border border-emerald-200">
-                    A password recovery link has been simulated for <strong>{email}</strong>!
+                    A password recovery link has been simulated for <strong>{forgotEmail || email}</strong>!
                   </div>
                   <p className="text-[11px] text-charcoal/50">
                     For the demo account, you can always sign in with password: <code className="font-mono bg-stone-100 px-1 py-0.5 rounded">password123</code>
@@ -522,7 +720,7 @@ export const Login = ({
                     variant="primary"
                     size="sm"
                     className="w-full mt-2"
-                    onClick={() => { setShowForgotModal(false); setForgotSent(false); }}
+                    onClick={() => { setShowForgotModal(false); setForgotSent(false); setForgotError(''); }}
                   >
                     Got it
                   </Button>
@@ -532,18 +730,45 @@ export const Login = ({
                   <p className="text-xs text-charcoal/60 dark:text-stone-300">
                     Enter your email to receive recovery instructions.
                   </p>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full px-3 py-2 rounded-xl border border-[#D9D3C7] dark:border-[#2C3E30] text-xs outline-none bg-white dark:bg-[#141C16]"
-                  />
+                  <div>
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => {
+                        setForgotEmail(e.target.value);
+                        setForgotError('');
+                      }}
+                      placeholder="you@example.com"
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none bg-white dark:bg-[#141C16] text-charcoal dark:text-white transition-all ${
+                        forgotError
+                          ? 'border-rose-400 dark:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                          : 'border-[#D9D3C7] dark:border-[#2C3E30] focus:border-forest-900 dark:focus:border-emerald-500'
+                      }`}
+                    />
+                    {forgotError && (
+                      <p className="mt-1 text-[11px] font-medium text-rose-500 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {forgotError}
+                      </p>
+                    )}
+                  </div>
                   <Button
                     variant="primary"
                     size="sm"
                     className="w-full"
-                    onClick={() => setForgotSent(true)}
+                    onClick={() => {
+                      const trimmed = (forgotEmail || '').trim();
+                      if (!trimmed) {
+                        setForgotError('Please enter your email address');
+                        return;
+                      }
+                      if (!emailRegex.test(trimmed)) {
+                        setForgotError('Please enter a valid email address (e.g. name@domain.com)');
+                        return;
+                      }
+                      setForgotError('');
+                      setForgotSent(true);
+                    }}
                   >
                     Send Reset Link
                   </Button>

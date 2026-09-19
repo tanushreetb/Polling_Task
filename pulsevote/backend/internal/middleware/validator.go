@@ -42,10 +42,19 @@ func HandleValidationError(c *gin.Context, err error) {
 func formatFieldMessage(fe validator.FieldError) string {
 	switch fe.Tag() {
 	case "required":
+		if fe.Field() == "Email" {
+			return "Email address is required"
+		}
+		if fe.Field() == "Password" {
+			return "Password is required"
+		}
 		return "This field is required"
 	case "email":
-		return "Must be a valid email address"
+		return "Please provide a valid email address"
 	case "min":
+		if fe.Field() == "Password" {
+			return fmt.Sprintf("Password must be at least %s characters", fe.Param())
+		}
 		return fmt.Sprintf("Must be at least %s characters/items", fe.Param())
 	case "max":
 		return fmt.Sprintf("Must not exceed %s characters/items", fe.Param())

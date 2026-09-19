@@ -191,10 +191,20 @@ export const HostDashboard = ({ setView, onSelectPoll, onPollResults }) => {
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
+    const cleanEmail = (profileEmail || '').trim();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!cleanEmail) {
+      showToast('Email address is required');
+      return;
+    }
+    if (!emailRegex.test(cleanEmail)) {
+      showToast('Please enter a valid email address');
+      return;
+    }
     const updatedUser = {
       ...(user || {}),
-      name: profileName,
-      email: profileEmail,
+      name: profileName.trim(),
+      email: cleanEmail,
     };
     localStorage.setItem('pulsevote_user', JSON.stringify(updatedUser));
     showToast('Profile updated successfully!');

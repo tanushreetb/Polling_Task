@@ -84,7 +84,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('pulsevote_user', JSON.stringify(userObj));
       return { success: true, user: userObj };
     } catch (err) {
-      const errMsg = err.response?.data?.error || err.message || 'Invalid email or password';
+      const details = err.response?.data?.details;
+      let errMsg = err.response?.data?.error || err.message || 'Invalid email or password';
+      if (Array.isArray(details) && details.length > 0) {
+        errMsg = details.map(d => d.message).join('. ');
+      }
+
       // If offline/server unavailable and not demo user, provide an offline session ONLY if previously registered
       if (!err.response) {
         const localAccounts = JSON.parse(localStorage.getItem('pulsevote_accounts') || '[]');
@@ -121,8 +126,25 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: userObj };
     } catch (err) {
       const errMsg = err.response?.data?.error;
-      if (err.response && err.response.status === 409) {
-        return { success: false, error: errMsg || 'An account with this email already exists' };
+      if (err.response) {
+        if (err.response.status === 409) {
+          return { success: false, error: errMsg || 'An account with this email already exists' };
+        }
+        if (err.response.status === 400 || err.response.status === 422) {
+          const validationDetails = err.response.data?.details;
+          if (Array.isArray(validationDetails) && validationDetails.length > 0) {
+            const formatted = validationDetails.map(d => d.message).join('. ');
+            return { success: false, error: formatted };
+          }
+          return { success: false, error: errMsg || 'Invalid registration details provided' };
+        }
+      }
+
+      // Check if duplicate in local storage even when offline
+      const localAccounts = JSON.parse(localStorage.getItem('pulsevote_accounts') || '[]');
+      const existing = localAccounts.find(a => a.email.toLowerCase() === cleanEmail);
+      if (existing) {
+        return { success: false, error: 'An account with this email already exists' };
       }
 
       // Offline fallback: save locally so new user can test seamlessly even without MongoDB
@@ -135,7 +157,6 @@ export const AuthProvider = ({ children }) => {
       };
 
       try {
-        const localAccounts = JSON.parse(localStorage.getItem('pulsevote_accounts') || '[]');
         localAccounts.push({ id: newId, name: cleanName, email: cleanEmail, password });
         localStorage.setItem('pulsevote_accounts', JSON.stringify(localAccounts));
       } catch (e) {}
